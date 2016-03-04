@@ -13,12 +13,11 @@ use Buzz\Browser;
 use Buzz\Client\MultiCurl;
 use Buzz\Message\Response;
 
-class Client
-{
+class Client {
     /**
      * @var string
      */
-    protected $apiUrl = 'https://android.googleapis.com/gcm/send';
+    protected $apiUrl = 'https://gcm-http.googleapis.com/gcm/send';
 
     /**
      * @var string
@@ -51,8 +50,7 @@ class Client
      * @param $apiKey
      * @param null $apiUrl
      */
-    public function __construct($apiKey, $apiUrl = null)
-    {
+    public function __construct($apiKey, $apiUrl = null) {
         $this->apiKey = $apiKey;
 
         if ($apiUrl) {
@@ -73,8 +71,7 @@ class Client
      *
      * @return bool
      */
-    public function send($data, array $registrationIds = array(), array $options = array())
-    {
+    public function send($data, array $registrationIds = array(), array $options = array()) {
         $this->responses = array();
 
         $data = array_merge($options, array(
@@ -96,9 +93,24 @@ class Client
         $this->client->flush();
 
         foreach ($this->responses as $response) {
-            $message = json_decode($response->getContent());
-            if ($message === null || $message->success == 0 || $message->failure > 0) {
+            $message = json_decode($response->getContent(), true);
+
+            if ($message === null) {
                 return false;
+            }
+
+            if (isset($message['success']) && isset($message['failure'])) {
+                if ($message->success == 0 || $message->failure > 0) {
+                    return false;
+                } else {
+                    return true;
+                }
+            } else {
+                if (isset($message['message_id'])) {
+                    return true;
+                } else {
+                    return false;
+                }
             }
         }
 
@@ -108,14 +120,13 @@ class Client
     /**
      * Sends the data to the given registration token, notification key, or topic via the GCM server.
      *
-     * @param mixed  $data
-     * @param string $topic   The value must be a registration token, notification key, or topic. Default global topic.
-     * @param array  $options to add along with message, such as collapse_key, time_to_live, delay_while_idle
+     * @param mixed $data
+     * @param string $topic The value must be a registration token, notification key, or topic. Default global topic.
+     * @param array $options to add along with message, such as collapse_key, time_to_live, delay_while_idle
      *
      * @return bool
      */
-    public function sendTo($data, $topic = '/topics/global', array $options = array())
-    {
+    public function sendTo($data, $topic = '/topics/global', array $options = array()) {
         $options['to'] = $topic;
 
         return $this->send($data, array(), $options);
@@ -126,10 +137,9 @@ class Client
      *
      * @return array
      */
-    protected function getHeaders()
-    {
+    protected function getHeaders() {
         $headers = array(
-            'Authorization: key='.$this->apiKey,
+            'Authorization: key=' . $this->apiKey,
             'Content-Type: application/json',
         );
 
@@ -141,8 +151,7 @@ class Client
      *
      * @return Response[]
      */
-    public function getResponses()
-    {
+    public function getResponses() {
         return $this->responses;
     }
 }
